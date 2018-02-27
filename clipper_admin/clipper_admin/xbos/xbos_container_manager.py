@@ -120,7 +120,7 @@ class XBOSContainerManager(ContainerManager):
             got_response=False
             for po in recv.payload_objects:
                 data = msgpack.unpackb(po.content)
-                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11),(2,2,0,13),(2,2,0,15),(2,2,0,17),(2,2,0,19)]
+                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11),(2,2,0,13),(2,2,0,15),(2,2,0,17),(2,2,0,19),(2,2,0,21)]
                 if po.type_dotted in allowd and data["MsgID"] == msg["MsgID"]:
                     print("Got response")
                     got_response=True
@@ -359,7 +359,17 @@ class XBOSContainerManager(ContainerManager):
             return response[0]['Info']
 
     def get_linked_models(self, app_name):
-        pass
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'App_name': app_name,
+        }, (2,2,0,20))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and response[0].get('Models'):
+            return response[0]['Models']
+
     def get_all_model_replicas(self, verbose=False):
         pass
     def get_model_replica_info(self, name, version, replica_id):
