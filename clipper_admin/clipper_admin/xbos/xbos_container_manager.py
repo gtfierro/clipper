@@ -120,7 +120,7 @@ class XBOSContainerManager(ContainerManager):
             got_response=False
             for po in recv.payload_objects:
                 data = msgpack.unpackb(po.content)
-                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11)]
+                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11),(2,2,0,13),(2,2,0,15),(2,2,0,17)]
                 if po.type_dotted in allowd and data["MsgID"] == msg["MsgID"]:
                     print("Got response")
                     got_response=True
@@ -290,6 +290,80 @@ class XBOSContainerManager(ContainerManager):
         if len(response) > 0 and response[0].get('Error'):
             raise Exception(response[0].get('Error'))
 
+    def get_current_model_version(self, name):
+        self.check_liveness()
+        version = None
+        model_info = self.get_all_models(verbose=True)
+        for m in model_info:
+            if m["model_name"] == name and m["is_current_version"]:
+                version = m["model_version"]
+                break
+        if version is None:
+            raise ClipperException(
+                "No versions of model {} registered with Clipper".format(name))
+        return version
+
+    def get_all_apps(self, verbose=False):
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'Verbose': verbose,
+        }, (2,2,0,14))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and verbose:
+            return response[0]['ApplicationDescriptions']
+        elif len(response) > 0 and not verbose:
+            return response[0]['ApplicationNames']
+
+
+    def get_all_models(self, verbose=False):
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'Verbose': verbose,
+        }, (2,2,0,12))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and verbose:
+            return response[0]['ModelDescriptions']
+        elif len(response) > 0 and not verbose:
+            return response[0]['ModelNames']
+
+    def get_app_info(self, name):
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'Name': name,
+        }, (2,2,0,16))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and response[0].get('Info'):
+            return response[0]['Info']
+        pass
+
+    def get_model_info(self, name, version):
+        pass
+
+    def get_linked_models(self, app_name):
+        pass
+    def get_all_model_replicas(self, verbose=False):
+        pass
+    def get_model_replica_info(self, name, version, replica_id):
+        pass
+    def get_clipper_logs(self, logging_dir="clipper_logs/"):
+        pass
+    def inspect_instance(self):
+        pass
+    def set_model_version(self, name, version, num_replicas=None):
+        pass
+    def stop_versioned_models(self, model_versions_dict):
+        pass
+    def stop_inactive_model_versions(self, model_names):
+        pass
 
     def _get_replicas(self, name, version):
         return self._get_with_label("{0}={1}".format(CLIPPER_MODEL_CONTAINER_LABEL, create_model_container_label(name, version)))
