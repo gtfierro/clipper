@@ -385,7 +385,19 @@ class XBOSContainerManager(ContainerManager):
             return response[0]['ReplicaNames']
 
     def get_model_replica_info(self, name, version, replica_id):
-        pass
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'Model_name': name,
+            'Model_version': version,
+            'Replica_id': replica_id,
+        }, (2,2,0,24))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and response[0].get('Info'):
+            return response[0]['Info']
+
     def get_clipper_logs(self, logging_dir="clipper_logs/"):
         pass
     def inspect_instance(self):
