@@ -32,6 +32,9 @@ deploy_regex_str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?\Z"
 deployment_regex = re.compile(deploy_regex_str)
 
 
+def _clean_image_name(name):
+    return name.split('/')[-1].split(':')[0]
+
 def _validate_versioned_model_name(name, version):
     if deployment_regex.match(name) is None:
         raise ClipperException(
@@ -120,7 +123,7 @@ class XBOSContainerManager(ContainerManager):
             got_response=False
             for po in recv.payload_objects:
                 data = msgpack.unpackb(po.content)
-                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11),(2,2,0,13),(2,2,0,15),(2,2,0,17),(2,2,0,19),(2,2,0,21),(2,2,0,23)]
+                allowd = [(2,2,0,1),(2,2,0,3),(2,2,0,5),(2,2,0,7),(2,2,0,9),(2,2,0,11),(2,2,0,13),(2,2,0,15),(2,2,0,17),(2,2,0,19),(2,2,0,21),(2,2,0,23),(2,2,0,25),(2,2,0,27),(2,2,0,29)]
                 if po.type_dotted in allowd and data["MsgID"] == msg["MsgID"]:
                     print("Got response")
                     got_response=True
@@ -398,14 +401,56 @@ class XBOSContainerManager(ContainerManager):
         elif len(response) > 0 and response[0].get('Info'):
             return response[0]['Info']
 
+    def _get_logs(self, containerid):
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'ContainerID': containerid,
+        }, (2,2,0,26))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0:
+            ret = ""
+            ret += response[0].get('Stdout','')
+            ret += response[0].get('Stderr','')
+            return ret
+
     def get_clipper_logs(self, logging_dir="clipper_logs/"):
-        pass
+        containers = self._get_with_label(CLIPPER_DOCKER_LABEL)
+        logging_dir = os.path.abspath(os.path.expanduser(logging_dir))
+
+        log_files = []
+        if not os.path.exists(logging_dir):
+            os.makedirs(logging_dir)
+            logger.info("Created logging directory: %s" % logging_dir)
+        for c in containers:
+            print(c['Image'])
+            log_file_name = "image_{image}:container_{id}.log".format(
+                image=_clean_image_name(c['Image']), id=c['ID'])
+            log_file = os.path.join(logging_dir, log_file_name)
+            with open(log_file, "w") as lf:
+                lf.write(self._get_logs(c['ID']))
+            log_files.append(log_file)
+        return log_files
+
     def inspect_instance(self):
-        pass
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+        }, (2,2,0,28))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        elif len(response) > 0 and response[0].get('Info'):
+            return response[0]['Info']
+
     def set_model_version(self, name, version, num_replicas=None):
         pass
+
     def stop_versioned_models(self, model_versions_dict):
         pass
+
     def stop_inactive_model_versions(self, model_names):
         pass
 
