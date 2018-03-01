@@ -111,6 +111,10 @@ class DockerContainerManager(ContainerManager):
                 ports={'%s/tcp' % self.redis_port: self.redis_port},
                 labels=self.common_labels.copy(),
                 **self.extra_container_kwargs)
+            ip = redis_container.attrs['NetworkSettings']['Networks'][self.docker_network]['IPAddress']
+            while ip == '':
+                redis_container.reload()
+                ip = redis_container.attrs['NetworkSettings']['Networks'][self.docker_network]['IPAddress']
             self.redis_ip = redis_container.name
 
         mgmt_cmd = "--redis_ip={redis_ip} --redis_port={redis_port}".format(
