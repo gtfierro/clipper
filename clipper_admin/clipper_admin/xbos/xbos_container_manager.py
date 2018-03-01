@@ -446,12 +446,24 @@ class XBOSContainerManager(ContainerManager):
             return response[0]['Info']
 
     def set_model_version(self, name, version, num_replicas=None):
-        pass
+        self.check_liveness()
+        msgid = random.randint(0, 2**32)
+        response = self.request({
+            'MsgID': msgid,
+            'Model_name': name,
+            'Model_version': version,
+        }, (2,2,0,30))
+        if len(response) > 0 and response[0].get('Error'):
+            raise Exception(response[0].get('Error'))
+        if num_replicas is not None:
+            self.set_num_replicas(name, num_replicas, version)
 
     def stop_versioned_models(self, model_versions_dict):
+        # we probably won't be stopping modesl
         pass
 
     def stop_inactive_model_versions(self, model_names):
+        # we probably won't be stopping modesl
         pass
 
     def _get_replicas(self, name, version):
