@@ -9,6 +9,9 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "1390"
       labels:
         ai.clipper.container.label: ""
         ai.clipper.name: query-frontend
@@ -18,8 +21,18 @@ spec:
         - "--redis_ip=$(REDIS_SERVICE_HOST)"
         - "--redis_port=$(REDIS_SERVICE_PORT)"
         image: clipper/query_frontend
+        imagePullPolicy: Always
         name: query-frontend
         ports:
         - containerPort: 7000
         - containerPort: 1337
+      - args:
+        - "--query_frontend_name" 
+        - "query-frontend:1337"
+        image: "clipper/frontend-exporter" 
+        name: frontend-exporter
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 1390
       restartPolicy: Always
+      

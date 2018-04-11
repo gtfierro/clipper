@@ -21,15 +21,15 @@
 
 #include <server_http.hpp>
 
-using clipper::Response;
+using clipper::Feedback;
 using clipper::FeedbackAck;
-using clipper::VersionedModelId;
-using clipper::InputType;
+using clipper::FeedbackQuery;
 using clipper::Input;
+using clipper::InputType;
 using clipper::Output;
 using clipper::Query;
-using clipper::Feedback;
-using clipper::FeedbackQuery;
+using clipper::Response;
+using clipper::VersionedModelId;
 using clipper::json::json_parse_error;
 using clipper::json::json_semantic_error;
 using clipper::redis::labels_to_str;
@@ -120,8 +120,8 @@ class AppMetrics {
 template <class QP>
 class RequestHandler {
  public:
-  RequestHandler(std::string address, int portno, int num_threads)
-      : server_(address, portno, num_threads), query_processor_() {
+  RequestHandler(std::string address, int portno)
+      : server_(address, portno), query_processor_() {
     clipper::Config& conf = clipper::get_config();
     while (!redis_connection_.connect(conf.get_redis_address(),
                                       conf.get_redis_port())) {
@@ -443,11 +443,11 @@ class RequestHandler {
     json_response.SetObject();
     clipper::json::add_long(json_response, PREDICTION_RESPONSE_KEY_QUERY_ID,
                             query_response.query_id_);
+    rapidjson::Document json_y_hat;
     try {
       // Attempt to parse the string output as JSON
       // and, if possible, nest it in object form within the
       // query response
-      rapidjson::Document json_y_hat;
       clipper::json::parse_json(query_response.output_.y_hat_, json_y_hat);
       clipper::json::add_object(json_response, PREDICTION_RESPONSE_KEY_OUTPUT,
                                 json_y_hat);
